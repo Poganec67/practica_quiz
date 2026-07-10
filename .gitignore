@@ -1,0 +1,9 @@
+# .gitignore
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.db
+.idea/
+.vscode/
+assets/temp_thumb.png
