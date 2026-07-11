@@ -6,7 +6,7 @@ def main():
     app = QApplication(sys.argv)
     
     app.setStyleSheet("""
-        QMainWindow { background-color: ##fafafa; }
+        QMainWindow { background-color: #fafafa; }
         QPushButton { 
             font-size: 13px; font-weight: bold; padding: 6px 12px; 
             border-radius: 4px; min-height: 25px; background-color: #0078D4; color: white;

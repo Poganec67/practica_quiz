@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         # ТЕКСТОВЫЙ ТАЙМЕР НА СТРАНИЦЕ ТЕСТА
         self.lbl_timer = QLabel("Оставшееся время: --:--")
         self.lbl_timer.setStyleSheet("font-size: 15px; color: #d32f2f; font-weight: bold; padding: 5px;")
-        self.lbl_timer.setAlignment(Qt.Key_Left)
+        self.lbl_timer.setAlignment(Qt.AlignLeft)
         
         self.lbl_q_text = QLabel("Текст вопроса")
         self.lbl_q_text.setWordWrap(True)
