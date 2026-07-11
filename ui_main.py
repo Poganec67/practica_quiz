@@ -3,9 +3,9 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QTabWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QListWidget, QPushButton, 
                              QLineEdit, QTextEdit, QRadioButton, QButtonGroup, 
                              QMessageBox, QFileDialog, QFormLayout, QGroupBox)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer  # Добавлен QTimer по требованию ТЗ
 from PyQt5.QtGui import QPixmap
-from PIL import Image  # Интеграция Pillow
+from PIL import Image  # Интеграция Pillow по требованию ТЗ
 from database import QuizDatabase
 
 class MainWindow(QMainWindow):
@@ -17,6 +17,10 @@ class MainWindow(QMainWindow):
         self.score = 0
         self.selected_image_path = ""
         
+        # Переменные для безопасного таймера
+        self.test_timer = QTimer(self)
+        self.time_left = 0
+        
         self._setup_ui()
         self._bind_signals()
         self._refresh_test_lists()
@@ -26,12 +30,15 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Система тестирования PyQt5")
         self.setMinimumSize(950, 700)
 
+        # Главный виджет-вкладка
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
 
+        # ---- ВКЛАДКА 1: ПРОХОЖДЕНИЕ ТЕСТОВ ----
         self.tab_run = QWidget()
         self.layout_run = QVBoxLayout(self.tab_run)
         
+        # Экран выбора тестов
         self.run_list_widget = QWidget()
         self.layout_run_list = QVBoxLayout(self.run_list_widget)
         self.lbl_select_test = QLabel("Выберите тест из списка для начала прохождения:")
@@ -42,14 +49,20 @@ class MainWindow(QMainWindow):
         self.layout_run_list.addWidget(self.list_available_tests)
         self.layout_run_list.addWidget(self.btn_start_test)
         
+        # Экраны самого тестирования
         self.run_process_widget = QWidget()
         self.run_process_widget.setVisible(False)
         self.layout_process = QVBoxLayout(self.run_process_widget)
         
+        # ТЕКСТОВЫЙ ТАЙМЕР НА СТРАНИЦЕ ТЕСТА
+        self.lbl_timer = QLabel("Оставшееся время: --:--")
+        self.lbl_timer.setStyleSheet("font-size: 15px; color: #d32f2f; font-weight: bold; padding: 5px;")
+        self.lbl_timer.setAlignment(Qt.Key_Left)
+        
         self.lbl_q_text = QLabel("Текст вопроса")
         self.lbl_q_text.setWordWrap(True)
         self.lbl_q_text.setStyleSheet("font-size: 16px; font-weight: bold;")
-        self.lbl_q_image = QLabel() 
+        self.lbl_q_image = QLabel() # Для Pillow картинок
         self.lbl_q_image.setAlignment(Qt.AlignCenter)
         
         self.answers_group_box = QGroupBox("Варианты ответа:")
@@ -64,6 +77,9 @@ class MainWindow(QMainWindow):
             self.layout_answers.addWidget(rb)
             
         self.btn_next_question = QPushButton("Дальше")
+        
+        # Компонуем элементы процесса тестирования (включая таймер)
+        self.layout_process.addWidget(self.lbl_timer)
         self.layout_process.addWidget(self.lbl_q_text)
         self.layout_process.addWidget(self.lbl_q_image)
         self.layout_process.addWidget(self.answers_group_box)
@@ -73,9 +89,11 @@ class MainWindow(QMainWindow):
         self.layout_run.addWidget(self.run_process_widget)
         self.tabs.addTab(self.tab_run, "📝 Прохождение тестов")
 
+        # ---- ВКЛАДКА 2: КОНСТРУКТОР ТЕСТОВ ----
         self.tab_edit = QWidget()
         self.layout_edit = QHBoxLayout(self.tab_edit)
 
+        # Левая часть конструктора (Список тестов)
         self.left_panel = QWidget()
         self.layout_left = QVBoxLayout(self.left_panel)
         self.layout_left.addWidget(QLabel("Доступные тесты:"))
@@ -86,6 +104,7 @@ class MainWindow(QMainWindow):
         self.btn_delete_test.setStyleSheet("background-color: #ff4d4d; color: white;")
         self.layout_left.addWidget(self.btn_delete_test)
         
+        # Создание нового теста
         self.group_create_test = QGroupBox("Создать новый тест")
         self.form_test = QFormLayout(self.group_create_test)
         self.entry_test_title = QLineEdit()
@@ -98,6 +117,7 @@ class MainWindow(QMainWindow):
         
         self.layout_edit.addWidget(self.left_panel, stretch=1)
 
+        # Правая часть конструктора (Редактор вопросов)
         self.right_panel = QGroupBox("Редактор вопросов для выбранного теста")
         self.layout_right = QVBoxLayout(self.right_panel)
         
@@ -105,12 +125,14 @@ class MainWindow(QMainWindow):
         self.entry_q_text = QTextEdit()
         self.entry_q_text.setMaximumHeight(60)
         
+        # Выбор картинки
         self.layout_img_select = QHBoxLayout()
         self.lbl_img_status = QLabel("Изображение не выбрано")
         self.btn_select_img = QPushButton("Обзор...")
         self.layout_img_select.addWidget(self.lbl_img_status)
         self.layout_img_select.addWidget(self.btn_select_img)
         
+        # Варианты ответов
         self.entry_answers = []
         self.radio_correct = []
         self.ans_button_group = QButtonGroup(self)
@@ -147,9 +169,11 @@ class MainWindow(QMainWindow):
         self.btn_save_question.clicked.connect(self._slots_add_question)
         self.btn_start_test.clicked.connect(self._slots_start_testing)
         self.btn_next_question.clicked.connect(self._slots_next_question)
+        
+        # Сигнал таймера — срабатывает каждую 1 секунду (1000 мс)
+        self.test_timer.timeout.connect(self._slots_update_timer)
 
     def _refresh_test_lists(self):
-        """Обновление списков тестов на обеих вкладках."""
         self.list_available_tests.clear()
         self.list_edit_tests.clear()
         tests = self.db.get_all_tests()
@@ -158,6 +182,7 @@ class MainWindow(QMainWindow):
             self.list_available_tests.addItem(display_text)
             self.list_edit_tests.addItem(display_text)
 
+    # --- СЛОТЫ: КОНСТРУКТОР ---
     def _slots_add_test(self):
         title = self.entry_test_title.text().strip()
         desc = self.entry_test_desc.text().strip()
@@ -215,6 +240,7 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.critical(self, "Ошибка", "Не удалось сохранить вопрос.")
 
+    # --- СЛОТЫ: ПРОХОЖДЕНИЕ И ТАЙМЕР ---
     def _slots_start_testing(self):
         selected = self.list_available_tests.currentItem()
         if not selected:
@@ -229,9 +255,31 @@ class MainWindow(QMainWindow):
             
         self.current_question_index = 0
         self.score = 0
+        
+        # Расчет времени: 30 секунд на один вопрос в тесте
+        self.time_left = len(self.current_test_questions) * 30
+        self._update_timer_label()
+        
         self.run_list_widget.setVisible(False)
         self.run_process_widget.setVisible(True)
+        
         self._display_question()
+        self.test_timer.start(1000) # Запуск ежесекундного отсчета
+
+    def _slots_update_timer(self):
+        """Слот обработки тика таймера."""
+        self.time_left -= 1
+        self._update_timer_label()
+        
+        if self.time_left <= 0:
+            self.test_timer.stop()
+            QMessageBox.warning(self, "Время вышло", "Время, отведённое на прохождение теста, полностью истекло!")
+            self._finish_testing()
+
+    def _update_timer_label(self):
+        mins = self.time_left // 60
+        secs = self.time_left % 60
+        self.lbl_timer.setText(f"Оставшееся время: {mins:02d}:{secs:02d}")
 
     def _display_question(self):
         qdata = self.current_test_questions[self.current_question_index]
@@ -266,17 +314,22 @@ class MainWindow(QMainWindow):
         if self.current_question_index < len(self.current_test_questions):
             self._display_question()
         else:
-            QMessageBox.information(self, "Результат", 
-                                    f"Тестирование завершено!\nВы набрали: {self.score} из {len(self.current_test_questions)} баллов.")
-            self.run_process_widget.setVisible(False)
-            self.run_list_widget.setVisible(True)
-            self._refresh_test_lists()
+            self._finish_testing()
+
+    def _finish_testing(self):
+        """Централизованное завершение теста (по кнопке или по таймауту)."""
+        self.test_timer.stop() # Обязательно останавливаем таймер
+        QMessageBox.information(self, "Результат", 
+                                f"Тестирование завершено!\nВы набрали: {self.score} из {len(self.current_test_questions)} баллов.")
+        self.run_process_widget.setVisible(False)
+        self.run_list_widget.setVisible(True)
+        self._refresh_test_lists()
 
     def closeEvent(self, event):
-        """Безопасное закрытие приложения с подтверждением."""
         reply = QMessageBox.question(self, 'Выход', "Вы действительно хотите закрыть приложение?",
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
+            self.test_timer.stop()
             event.accept()
         else:
             event.ignore()
