@@ -325,11 +325,12 @@ class MainWindow(QMainWindow):
         self.run_list_widget.setVisible(True)
         self._refresh_test_lists()
 
-    def closeEvent(self, event):
+def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Выход', "Вы действительно хотите закрыть приложение?",
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
             self.test_timer.stop()
+            self.db.close() 
             event.accept()
         else:
             event.ignore()
