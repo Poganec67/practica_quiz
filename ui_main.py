@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QTabWidget, QVBoxLayout,
                              QMessageBox, QFileDialog, QFormLayout, QGroupBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
-from PIL import Image  # Интеграция Pillow по требованию ТЗ
+from PIL import Image  # Интеграция Pillow
 from database import QuizDatabase
 
 class MainWindow(QMainWindow):
@@ -24,17 +24,14 @@ class MainWindow(QMainWindow):
     def _setup_ui(self):
         """Инициализация интерфейса (без использования сеток hardcode размеров)."""
         self.setWindowTitle("Система тестирования PyQt5")
-        self.setMinimumSize(900, 650)
+        self.setMinimumSize(950, 700)
 
-        # Главный виджет-вкладка
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
 
-        # ---- ВКЛАДКА 1: ПРОХОЖДЕНИЕ ТЕСТОВ ----
         self.tab_run = QWidget()
         self.layout_run = QVBoxLayout(self.tab_run)
         
-        # Под-интерфейсы прохождения через скрытие элементов (или аналог Stacked)
         self.run_list_widget = QWidget()
         self.layout_run_list = QVBoxLayout(self.run_list_widget)
         self.lbl_select_test = QLabel("Выберите тест из списка для начала прохождения:")
@@ -45,7 +42,6 @@ class MainWindow(QMainWindow):
         self.layout_run_list.addWidget(self.list_available_tests)
         self.layout_run_list.addWidget(self.btn_start_test)
         
-        # Экраны самого тестирования
         self.run_process_widget = QWidget()
         self.run_process_widget.setVisible(False)
         self.layout_process = QVBoxLayout(self.run_process_widget)
@@ -53,7 +49,7 @@ class MainWindow(QMainWindow):
         self.lbl_q_text = QLabel("Текст вопроса")
         self.lbl_q_text.setWordWrap(True)
         self.lbl_q_text.setStyleSheet("font-size: 16px; font-weight: bold;")
-        self.lbl_q_image = QLabel() # Для Pillow картинок
+        self.lbl_q_image = QLabel() 
         self.lbl_q_image.setAlignment(Qt.AlignCenter)
         
         self.answers_group_box = QGroupBox("Варианты ответа:")
@@ -77,11 +73,9 @@ class MainWindow(QMainWindow):
         self.layout_run.addWidget(self.run_process_widget)
         self.tabs.addTab(self.tab_run, "📝 Прохождение тестов")
 
-        # ---- ВКЛАДКА 2: КОНСТРУКТОР ТЕСТОВ ----
         self.tab_edit = QWidget()
         self.layout_edit = QHBoxLayout(self.tab_edit)
 
-        # Левая часть конструктора (Список тестов)
         self.left_panel = QWidget()
         self.layout_left = QVBoxLayout(self.left_panel)
         self.layout_left.addWidget(QLabel("Доступные тесты:"))
@@ -92,7 +86,6 @@ class MainWindow(QMainWindow):
         self.btn_delete_test.setStyleSheet("background-color: #ff4d4d; color: white;")
         self.layout_left.addWidget(self.btn_delete_test)
         
-        # Создание нового теста
         self.group_create_test = QGroupBox("Создать новый тест")
         self.form_test = QFormLayout(self.group_create_test)
         self.entry_test_title = QLineEdit()
@@ -105,7 +98,6 @@ class MainWindow(QMainWindow):
         
         self.layout_edit.addWidget(self.left_panel, stretch=1)
 
-        # Правая часть конструктора (Редактор вопросов к выделенному тесту)
         self.right_panel = QGroupBox("Редактор вопросов для выбранного теста")
         self.layout_right = QVBoxLayout(self.right_panel)
         
@@ -113,14 +105,12 @@ class MainWindow(QMainWindow):
         self.entry_q_text = QTextEdit()
         self.entry_q_text.setMaximumHeight(60)
         
-        # Поле выбора картинки
         self.layout_img_select = QHBoxLayout()
         self.lbl_img_status = QLabel("Изображение не выбрано")
         self.btn_select_img = QPushButton("Обзор...")
         self.layout_img_select.addWidget(self.lbl_img_status)
         self.layout_img_select.addWidget(self.btn_select_img)
         
-        # Поля ответов
         self.entry_answers = []
         self.radio_correct = []
         self.ans_button_group = QButtonGroup(self)
@@ -168,7 +158,6 @@ class MainWindow(QMainWindow):
             self.list_available_tests.addItem(display_text)
             self.list_edit_tests.addItem(display_text)
 
-    # --- СЛОТЫ: КОНСТРУКТОР ---
     def _slots_add_test(self):
         title = self.entry_test_title.text().strip()
         desc = self.entry_test_desc.text().strip()
@@ -226,7 +215,6 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.critical(self, "Ошибка", "Не удалось сохранить вопрос.")
 
-    # --- СЛОТЫ: ПРОХОЖДЕНИЕ ---
     def _slots_start_testing(self):
         selected = self.list_available_tests.currentItem()
         if not selected:
@@ -249,7 +237,6 @@ class MainWindow(QMainWindow):
         qdata = self.current_test_questions[self.current_question_index]
         self.lbl_q_text.setText(f"Вопрос {self.current_question_index + 1}: {qdata['text']}")
         
-        # Применение Pillow для обработки изображения (изменение размера)
         if qdata['image'] and os.path.exists(qdata['image']):
             try:
                 with Image.open(qdata['image']) as img:
@@ -264,7 +251,6 @@ class MainWindow(QMainWindow):
         else:
             self.lbl_q_image.setVisible(False)
 
-        # Вывод вариантов
         for i, ans in enumerate(qdata['answers']):
             self.radio_buttons[i].setText(ans[0])
             self.radio_buttons[i].setChecked(i == 0)
@@ -273,7 +259,6 @@ class MainWindow(QMainWindow):
         qdata = self.current_test_questions[self.current_question_index]
         selected_idx = self.btn_group.checkedId()
         
-        # Проверка правильности
         if qdata['answers'][selected_idx][1] == 1:
             self.score += 1
             
